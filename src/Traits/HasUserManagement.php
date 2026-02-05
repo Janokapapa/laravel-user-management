@@ -14,6 +14,11 @@ trait HasUserManagement
      */
     public function canAccessPanel(Panel $panel): bool
     {
+        // Allow all authenticated users by default (configurable)
+        if (config('user-management.allow_all_users', true)) {
+            return true;
+        }
+
         // Super admin always has access
         if ($this->hasRole('super-admin')) {
             return true;

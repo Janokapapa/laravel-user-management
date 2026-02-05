@@ -14,6 +14,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Allow All Users
+    |--------------------------------------------------------------------------
+    |
+    | If true, all authenticated users can access the admin panel.
+    | If false, users need 'access admin' permission or super-admin role.
+    |
+    */
+    'allow_all_users' => true,
+
+    /*
+    |--------------------------------------------------------------------------
     | Navigation Group
     |--------------------------------------------------------------------------
     |
