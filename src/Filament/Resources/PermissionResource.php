@@ -21,9 +21,29 @@ class PermissionResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-key';
 
-    public static function canViewAny(): bool
+    public static function canAccess(): bool
     {
         return auth()->user()?->hasRole('super-admin') || auth()->user()?->hasPermissionTo('manage permissions');
+    }
+
+    public static function canViewAny(): bool
+    {
+        return static::canAccess();
+    }
+
+    public static function canCreate(): bool
+    {
+        return static::canAccess();
+    }
+
+    public static function canEdit(\Illuminate\Database\Eloquent\Model $record): bool
+    {
+        return static::canAccess();
+    }
+
+    public static function canDelete(\Illuminate\Database\Eloquent\Model $record): bool
+    {
+        return static::canAccess();
     }
 
     public static function getNavigationLabel(): string
