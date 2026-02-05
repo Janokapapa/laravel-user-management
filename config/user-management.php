@@ -72,6 +72,7 @@ return [
             'access admin',
             'manage users',
         ],
+        'guest' => [], // No permissions, dashboard only
     ],
 
     /*
@@ -86,6 +87,6 @@ return [
         'enabled' => true,
         'providers' => ['google'],
         'auto_register' => true, // Auto-create user if not exists
-        'default_role' => null, // Role to assign to new users (null = no role)
+        'default_role' => 'guest', // Role to assign to new users
     ],
 ];
