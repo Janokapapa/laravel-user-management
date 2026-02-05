@@ -56,6 +56,7 @@ return [
         'manage users',
         'manage roles',
         'manage permissions',
+        'manage content',
     ],
 
     /*
@@ -71,6 +72,12 @@ return [
         'admin' => [
             'access admin',
             'manage users',
+            'manage roles',
+            'manage permissions',
+        ],
+        'editor' => [
+            'access admin',
+            'manage content', // For email system etc
         ],
         'guest' => [], // No permissions, dashboard only
     ],
