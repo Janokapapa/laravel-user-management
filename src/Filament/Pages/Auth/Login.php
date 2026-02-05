@@ -6,7 +6,7 @@ use Filament\Auth\Pages\Login as BaseLogin;
 
 class Login extends BaseLogin
 {
-    protected static string $view = 'user-management::filament.pages.auth.login';
+    protected string $view = 'user-management::filament.pages.auth.login';
 
     public function getSocialProviders(): array
     {
