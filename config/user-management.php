@@ -1,0 +1,65 @@
+<?php
+
+return [
+    /*
+    |--------------------------------------------------------------------------
+    | User Model
+    |--------------------------------------------------------------------------
+    |
+    | The model used for users. Must implement FilamentUser interface
+    | and use the HasRoles trait from Spatie Permission.
+    |
+    */
+    'user_model' => App\Models\User::class,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Navigation Group
+    |--------------------------------------------------------------------------
+    |
+    | The navigation group for user management resources in Filament.
+    |
+    */
+    'navigation_group' => 'User Management',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Navigation Sort
+    |--------------------------------------------------------------------------
+    |
+    | The sort order for the navigation group.
+    |
+    */
+    'navigation_sort' => 100,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Default Permissions
+    |--------------------------------------------------------------------------
+    |
+    | Permissions that will be created by the seeder.
+    |
+    */
+    'default_permissions' => [
+        'access admin',
+        'manage users',
+        'manage roles',
+        'manage permissions',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Default Roles
+    |--------------------------------------------------------------------------
+    |
+    | Roles that will be created by the seeder with their permissions.
+    |
+    */
+    'default_roles' => [
+        'super-admin' => ['*'], // All permissions
+        'admin' => [
+            'access admin',
+            'manage users',
+        ],
+    ],
+];

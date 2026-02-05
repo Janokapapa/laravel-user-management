@@ -1,0 +1,31 @@
+{
+    "name": "jandev/laravel-user-management",
+    "description": "User, Role and Permission management for Laravel with Filament integration",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Jan",
+            "email": "jan@jandev.eu"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "filament/filament": "^4.0",
+        "spatie/laravel-permission": "^6.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "JanDev\\UserManagement\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "JanDev\\UserManagement\\UserManagementServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
