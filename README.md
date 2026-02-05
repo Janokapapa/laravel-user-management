@@ -113,6 +113,51 @@ return [
 - **Permission Management**: Create and manage granular permissions
 - **Filament Integration**: Full Filament 4 admin panel integration
 - **Spatie Permission**: Built on the battle-tested Spatie Laravel Permission package
+- **Social Login**: Google OAuth integration for easy login
+
+## Social Login (Google OAuth)
+
+### 1. Create Google OAuth credentials
+
+Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials) and create OAuth 2.0 credentials:
+- Authorized redirect URI: `https://yourdomain.com/auth/google/callback`
+
+### 2. Add credentials to config/services.php
+
+```php
+'google' => [
+    'client_id' => env('GOOGLE_CLIENT_ID'),
+    'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+    'redirect' => env('GOOGLE_REDIRECT_URI', '/auth/google/callback'),
+],
+```
+
+### 3. Add to .env
+
+```env
+GOOGLE_CLIENT_ID=your-client-id
+GOOGLE_CLIENT_SECRET=your-client-secret
+GOOGLE_REDIRECT_URI=https://yourdomain.com/auth/google/callback
+```
+
+### 4. Configuration
+
+Social login is enabled by default. You can configure it in `config/user-management.php`:
+
+```php
+'social_login' => [
+    'enabled' => true,
+    'providers' => ['google'],
+    'auto_register' => true, // Auto-create user if not exists
+    'default_role' => null, // Role to assign to new users
+],
+```
+
+### Disable social login for a specific panel
+
+```php
+UserManagementPlugin::make()->socialLogin(false),
+```
 
 ## License
 

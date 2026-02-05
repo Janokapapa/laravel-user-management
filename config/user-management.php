@@ -62,4 +62,19 @@ return [
             'manage users',
         ],
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Social Login
+    |--------------------------------------------------------------------------
+    |
+    | Enable social login providers. Set credentials in config/services.php
+    |
+    */
+    'social_login' => [
+        'enabled' => true,
+        'providers' => ['google'],
+        'auto_register' => true, // Auto-create user if not exists
+        'default_role' => null, // Role to assign to new users (null = no role)
+    ],
 ];

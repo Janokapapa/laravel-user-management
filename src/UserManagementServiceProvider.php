@@ -2,6 +2,7 @@
 
 namespace JanDev\UserManagement;
 
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Spatie\Permission\PermissionServiceProvider;
 
@@ -36,5 +37,23 @@ class UserManagementServiceProvider extends ServiceProvider
         ], 'user-management-views');
 
         $this->loadViewsFrom(__DIR__ . '/../resources/views', 'user-management');
+
+        // Register socialite routes
+        $this->registerRoutes();
+    }
+
+    protected function registerRoutes(): void
+    {
+        if (!config('user-management.social_login.enabled', false)) {
+            return;
+        }
+
+        Route::middleware('web')
+            ->group(function () {
+                Route::get('auth/{provider}/redirect', [Http\Controllers\SocialiteController::class, 'redirect'])
+                    ->name('user-management.socialite.redirect');
+                Route::get('auth/{provider}/callback', [Http\Controllers\SocialiteController::class, 'callback'])
+                    ->name('user-management.socialite.callback');
+            });
     }
 }
