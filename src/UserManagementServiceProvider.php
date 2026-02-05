@@ -4,6 +4,7 @@ namespace JanDev\UserManagement;
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use JanDev\UserManagement\Console\Commands\SetupCommand;
 use Spatie\Permission\PermissionServiceProvider;
 
 class UserManagementServiceProvider extends ServiceProvider
@@ -40,6 +41,13 @@ class UserManagementServiceProvider extends ServiceProvider
 
         // Register socialite routes
         $this->registerRoutes();
+
+        // Register commands
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                SetupCommand::class,
+            ]);
+        }
     }
 
     protected function registerRoutes(): void
