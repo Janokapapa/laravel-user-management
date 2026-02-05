@@ -21,6 +21,11 @@ class PermissionResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-key';
 
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->hasRole('super-admin') || auth()->user()?->hasPermissionTo('manage permissions');
+    }
+
     public static function getNavigationLabel(): string
     {
         return __('Permissions');

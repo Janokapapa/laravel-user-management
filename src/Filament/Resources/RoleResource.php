@@ -22,6 +22,11 @@ class RoleResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shield-check';
 
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->hasRole('super-admin') || auth()->user()?->hasPermissionTo('manage roles');
+    }
+
     public static function getNavigationLabel(): string
     {
         return __('Roles');

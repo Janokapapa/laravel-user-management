@@ -24,6 +24,11 @@ class UserResource extends Resource
 {
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-users';
 
+    public static function canViewAny(): bool
+    {
+        return auth()->user()?->hasRole('super-admin') || auth()->user()?->hasPermissionTo('manage users');
+    }
+
     public static function getModel(): string
     {
         return config('user-management.user_model', \App\Models\User::class);
