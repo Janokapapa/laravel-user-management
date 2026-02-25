@@ -35,6 +35,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | System Navigation Group
+    |--------------------------------------------------------------------------
+    |
+    | The navigation group for system-level resources (Settings, etc.).
+    | Other modules can use this same config key to register their
+    | system-level menu items into the same group.
+    |
+    */
+    'system_navigation_group' => 'System',
+
+    /*
+    |--------------------------------------------------------------------------
     | Navigation Sort
     |--------------------------------------------------------------------------
     |

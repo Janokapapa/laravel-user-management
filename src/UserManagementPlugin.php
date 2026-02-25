@@ -8,6 +8,7 @@ use JanDev\UserManagement\Filament\Pages\Auth\Login;
 use JanDev\UserManagement\Filament\Resources\UserResource;
 use JanDev\UserManagement\Filament\Resources\RoleResource;
 use JanDev\UserManagement\Filament\Resources\PermissionResource;
+use JanDev\UserManagement\Filament\Resources\SettingResource;
 
 class UserManagementPlugin implements Plugin
 {
@@ -41,6 +42,7 @@ class UserManagementPlugin implements Plugin
             UserResource::class,
             RoleResource::class,
             PermissionResource::class,
+            SettingResource::class,
         ]);
 
         // Override login page if social login is enabled
