@@ -217,6 +217,17 @@ class SettingResource extends Resource
                             ->maxLength(500)
                             ->visible(fn (Get $get): bool => $get('type') === 'mailgun')
                             ->helperText(__('e.g. https://api.eu.mailgun.net for EU')),
+
+                        // Tracking options
+                        Toggle::make('track_clicks')
+                            ->label(__('Click Tracking'))
+                            ->default(true)
+                            ->helperText(__('Rewrite links to track clicks')),
+
+                        Toggle::make('track_opens')
+                            ->label(__('Open Tracking'))
+                            ->default(false)
+                            ->helperText(__('Embed tracking pixel for open detection')),
                     ])
                     ->columns(2)
                     ->maxItems(20)
