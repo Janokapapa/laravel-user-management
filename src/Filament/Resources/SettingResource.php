@@ -6,8 +6,13 @@ use JanDev\UserManagement\Filament\Resources\Settings\Pages;
 use JanDev\UserManagement\Models\Setting;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\TagsInput;
 use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -40,6 +45,17 @@ class SettingResource extends Resource
         return __('Settings');
     }
 
+    /**
+     * Check if a record's group+key is handled by a Repeater (not the generic Textarea).
+     */
+    protected static function isRepeaterRecord(string $group, string $key): bool
+    {
+        return ($group === 'audience' && $key === 'custom_fields')
+            || ($group === 'email' && $key === 'senders')
+            || ($group === 'email' && $key === 'pmta_servers')
+            || ($group === 'email' && $key === 'domain_routing');
+    }
+
     public static function form(Schema $schema): Schema
     {
         return $schema
@@ -48,16 +64,284 @@ class SettingResource extends Resource
                     ->label(__('Group'))
                     ->required()
                     ->maxLength(255)
+                    ->live()
                     ->helperText(__('Category for the setting (e.g. audience, general)')),
 
                 TextInput::make('key')
                     ->label(__('Key'))
                     ->required()
                     ->maxLength(255)
+                    ->live()
                     ->helperText(__('Unique key within the group')),
 
+                // Repeater UI for audience.custom_fields
+                Repeater::make('value')
+                    ->label(__('Custom Field Definitions'))
+                    ->visible(fn (Get $get): bool => $get('group') === 'audience' && $get('key') === 'custom_fields')
+                    ->dehydrated(fn (Get $get): bool => $get('group') === 'audience' && $get('key') === 'custom_fields')
+                    ->schema([
+                        TextInput::make('slug')
+                            ->label(__('Slug'))
+                            ->required()
+                            ->rules(['regex:/^[a-zA-Z0-9_]+$/'])
+                            ->helperText(__('Only letters, numbers and underscores'))
+                            ->maxLength(50),
+
+                        TextInput::make('name')
+                            ->label(__('Display Name'))
+                            ->required()
+                            ->maxLength(100),
+
+                        Select::make('type')
+                            ->label(__('Type'))
+                            ->options([
+                                'text' => __('Text'),
+                                'number' => __('Number'),
+                                'boolean' => __('Boolean'),
+                                'date' => __('Date'),
+                                'select' => __('Select (Dropdown)'),
+                            ])
+                            ->required()
+                            ->live(),
+
+                        TagsInput::make('options')
+                            ->label(__('Options'))
+                            ->helperText(__('Press Enter after each option'))
+                            ->visible(fn (Get $get): bool => $get('type') === 'select'),
+
+                        Toggle::make('required')
+                            ->label(__('Required'))
+                            ->default(false),
+
+                        TextInput::make('sort_order')
+                            ->label(__('Sort Order'))
+                            ->numeric()
+                            ->default(0),
+                    ])
+                    ->columns(3)
+                    ->maxItems(20)
+                    ->reorderable()
+                    ->collapsible()
+                    ->itemLabel(fn (array $state): ?string => ($state['name'] ?? '') . ' (' . ($state['slug'] ?? '') . ')')
+                    ->defaultItems(0),
+
+                // Repeater UI for email.senders
+                Repeater::make('value')
+                    ->label(__('Email Senders'))
+                    ->visible(fn (Get $get): bool => $get('group') === 'email' && $get('key') === 'senders')
+                    ->dehydrated(fn (Get $get): bool => $get('group') === 'email' && $get('key') === 'senders')
+                    ->schema([
+                        TextInput::make('name')
+                            ->label(__('Sender Name (unique ID)'))
+                            ->required()
+                            ->maxLength(100)
+                            ->rules([
+                                'regex:/^[a-zA-Z0-9_-]+$/',
+                                function () {
+                                    return function (string $attribute, mixed $value, \Closure $fail) {
+                                        // Uniqueness is enforced at save time via form validation
+                                    };
+                                },
+                            ])
+                            ->helperText(__('Unique identifier (letters, numbers, dashes, underscores)')),
+
+                        Select::make('type')
+                            ->label(__('Type'))
+                            ->options([
+                                'smtp' => __('SMTP'),
+                                'pmta' => __('PMTA'),
+                                'mailgun' => __('Mailgun'),
+                            ])
+                            ->required()
+                            ->live(),
+
+                        TextInput::make('from_address')
+                            ->label(__('From Address'))
+                            ->email()
+                            ->required()
+                            ->maxLength(255),
+
+                        TextInput::make('from_name')
+                            ->label(__('From Name'))
+                            ->required()
+                            ->maxLength(255),
+
+                        TextInput::make('reply_to')
+                            ->label(__('Reply-To'))
+                            ->email()
+                            ->maxLength(255),
+
+                        Toggle::make('is_default')
+                            ->label(__('Default Sender'))
+                            ->default(false),
+
+                        // SMTP-specific fields
+                        TextInput::make('smtp_mailer')
+                            ->label(__('SMTP Mailer (config/mail.php mailer name)'))
+                            ->default('smtp')
+                            ->maxLength(100)
+                            ->visible(fn (Get $get): bool => $get('type') === 'smtp')
+                            ->helperText(__('Mailer name from config/mail.php')),
+
+                        // PMTA-specific fields
+                        Select::make('pmta_server')
+                            ->label(__('PMTA Server'))
+                            ->options(fn () => collect(\JanDev\EmailSystem\Support\SenderResolver::pmtaServers())
+                                ->mapWithKeys(fn ($s) => [$s['name'] => $s['name'] . ' (' . ($s['host'] ?? '') . ')'])
+                                ->toArray())
+                            ->visible(fn (Get $get): bool => $get('type') === 'pmta')
+                            ->helperText(__('Server defined in PMTA Servers setting')),
+
+                        TextInput::make('pmta_virtual_mta')
+                            ->label(__('Virtual MTA Override'))
+                            ->maxLength(100)
+                            ->visible(fn (Get $get): bool => $get('type') === 'pmta')
+                            ->helperText(__('Overrides server\'s Virtual MTA if set')),
+
+                        // Mailgun-specific fields
+                        TextInput::make('mailgun_domain')
+                            ->label(__('Mailgun Domain'))
+                            ->maxLength(255)
+                            ->visible(fn (Get $get): bool => $get('type') === 'mailgun'),
+
+                        TextInput::make('mailgun_secret')
+                            ->label(__('Mailgun API Key'))
+                            ->password()
+                            ->revealable()
+                            ->maxLength(500)
+                            ->visible(fn (Get $get): bool => $get('type') === 'mailgun'),
+
+                        TextInput::make('mailgun_endpoint')
+                            ->label(__('Mailgun Endpoint'))
+                            ->default('https://api.mailgun.net')
+                            ->maxLength(500)
+                            ->visible(fn (Get $get): bool => $get('type') === 'mailgun')
+                            ->helperText(__('e.g. https://api.eu.mailgun.net for EU')),
+                    ])
+                    ->columns(2)
+                    ->maxItems(20)
+                    ->reorderable()
+                    ->collapsible()
+                    ->itemLabel(fn (array $state): ?string => ($state['name'] ?? __('New Sender')) . ' (' . ($state['type'] ?? '') . ')')
+                    ->defaultItems(0)
+                    ->rules([
+                        function () {
+                            return function (string $attribute, mixed $value, \Closure $fail) {
+                                if (!is_array($value)) {
+                                    return;
+                                }
+                                $names = array_filter(array_column($value, 'name'));
+                                if (count($names) !== count(array_unique($names))) {
+                                    $fail(__('Sender names must be unique. Duplicate names found.'));
+                                }
+                            };
+                        },
+                    ]),
+
+                // Repeater UI for email.pmta_servers
+                Repeater::make('value')
+                    ->label(__('PMTA Servers'))
+                    ->visible(fn (Get $get): bool => $get('group') === 'email' && $get('key') === 'pmta_servers')
+                    ->dehydrated(fn (Get $get): bool => $get('group') === 'email' && $get('key') === 'pmta_servers')
+                    ->schema([
+                        TextInput::make('name')
+                            ->label(__('Server Name (unique ID)'))
+                            ->required()
+                            ->maxLength(100)
+                            ->helperText(__('e.g. caspmta1, caspmta3')),
+
+                        TextInput::make('host')
+                            ->label(__('Host / IP'))
+                            ->required()
+                            ->maxLength(255),
+
+                        TextInput::make('user')
+                            ->label(__('SSH User'))
+                            ->default('root')
+                            ->required()
+                            ->maxLength(100),
+
+                        TextInput::make('port')
+                            ->label(__('SSH Port'))
+                            ->numeric()
+                            ->default(22)
+                            ->required(),
+
+                        TextInput::make('ssh_key')
+                            ->label(__('SSH Key Path'))
+                            ->maxLength(500)
+                            ->helperText(__('Absolute path to SSH private key file')),
+
+                        TextInput::make('tmp_path')
+                            ->label(__('Tmp Path'))
+                            ->default('/tmp-pickup')
+                            ->maxLength(500),
+
+                        TextInput::make('pickup_path')
+                            ->label(__('Pickup Path'))
+                            ->default('/pickup')
+                            ->maxLength(500),
+
+                        TextInput::make('virtual_mta')
+                            ->label(__('Virtual MTA'))
+                            ->default('all')
+                            ->maxLength(100),
+
+                        TextInput::make('bounce_domain')
+                            ->label(__('Bounce Domain'))
+                            ->maxLength(255)
+                            ->helperText(__('e.g. bounce.example.com')),
+
+                        TextInput::make('batch_size')
+                            ->label(__('Batch Size'))
+                            ->numeric()
+                            ->nullable()
+                            ->helperText(__('Max emails per sync run (leave empty for unlimited)')),
+                    ])
+                    ->columns(3)
+                    ->maxItems(20)
+                    ->reorderable()
+                    ->collapsible()
+                    ->itemLabel(fn (array $state): ?string => ($state['name'] ?? __('New Server')) . ' (' . ($state['host'] ?? '') . ')')
+                    ->defaultItems(0),
+
+                // Repeater UI for email.domain_routing
+                Repeater::make('value')
+                    ->label(__('Domain Routing Rules'))
+                    ->visible(fn (Get $get): bool => $get('group') === 'email' && $get('key') === 'domain_routing')
+                    ->dehydrated(fn (Get $get): bool => $get('group') === 'email' && $get('key') === 'domain_routing')
+                    ->schema([
+                        Select::make('provider')
+                            ->label(__('Email Provider'))
+                            ->options([
+                                'microsoft' => __('Microsoft (hotmail, outlook, live)'),
+                                'yahoo'     => __('Yahoo (yahoo, ymail, aol)'),
+                                'gmail'     => __('Gmail (gmail, googlemail)'),
+                                'icloud'    => __('iCloud (icloud, me, mac)'),
+                                'default'   => __('Default (everything else)'),
+                            ])
+                            ->required(),
+
+                        Select::make('server')
+                            ->label(__('PMTA Server'))
+                            ->options(fn () => collect(\JanDev\EmailSystem\Support\SenderResolver::pmtaServers())
+                                ->mapWithKeys(fn ($s) => [$s['name'] => $s['name'] . ' (' . ($s['host'] ?? '') . ')'])
+                                ->toArray())
+                            ->required()
+                            ->helperText(__('Server from PMTA Servers setting')),
+                    ])
+                    ->columns(2)
+                    ->maxItems(10)
+                    ->reorderable(false)
+                    ->collapsible()
+                    ->itemLabel(fn (array $state): ?string => ($state['provider'] ?? '') . ' → ' . ($state['server'] ?? ''))
+                    ->defaultItems(0),
+
+                // JSON textarea for all other settings
                 Textarea::make('value')
                     ->label(__('Value (JSON)'))
+                    ->visible(fn (Get $get): bool => !static::isRepeaterRecord($get('group') ?? '', $get('key') ?? ''))
+                    ->dehydrated(fn (Get $get): bool => !static::isRepeaterRecord($get('group') ?? '', $get('key') ?? ''))
                     ->required()
                     ->rows(8)
                     ->helperText(__('JSON value. Must be valid JSON (string, number, array or object). Examples: "text", 42, true, [], {}'))
@@ -67,32 +351,24 @@ class SettingResource extends Resource
                                 if ($value === null || $value === '') {
                                     return;
                                 }
+                                if (is_array($value)) {
+                                    return;
+                                }
                                 json_decode($value);
                                 if (json_last_error() !== JSON_ERROR_NONE) {
                                     $fail(__('The value must be valid JSON.'));
-                                }
-
-                                // Validate slugs and count if this is custom_fields definition
-                                $decoded = json_decode($value, true);
-                                if (is_array($decoded)) {
-                                    if (count($decoded) > 20) {
-                                        $fail(__('Maximum 20 custom fields allowed.'));
-                                        return;
-                                    }
-                                    foreach ($decoded as $item) {
-                                        if (isset($item['slug'])) {
-                                            if (!preg_match('/^[a-zA-Z0-9_]+$/', $item['slug'])) {
-                                                $fail(__('Custom field slugs must only contain letters, numbers and underscores.'));
-                                                return;
-                                            }
-                                        }
-                                    }
                                 }
                             };
                         },
                     ])
                     ->dehydrateStateUsing(fn ($state) => $state)
                     ->afterStateHydrated(function ($component, $state) {
+                        // Skip conversion if a Repeater handles this record
+                        $record = $component->getRecord();
+                        if ($record instanceof \JanDev\UserManagement\Models\Setting
+                            && static::isRepeaterRecord($record->group, $record->key)) {
+                            return;
+                        }
                         if (is_array($state) || is_object($state)) {
                             $component->state(json_encode($state, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
                         }
@@ -117,8 +393,26 @@ class SettingResource extends Resource
 
                 TextColumn::make('value')
                     ->label(__('Value'))
-                    ->limit(60)
-                    ->formatStateUsing(fn ($state) => is_array($state) ? json_encode($state) : $state),
+                    ->wrap()
+                    ->getStateUsing(function (Setting $record): string {
+                        $value = $record->value;
+                        if (is_array($value)) {
+                            if ($record->group === 'audience' && $record->key === 'custom_fields') {
+                                return collect($value)->pluck('name')->filter()->implode(', ');
+                            }
+                            if ($record->group === 'email' && $record->key === 'senders') {
+                                return collect($value)->pluck('name')->filter()->implode(', ');
+                            }
+                            if ($record->group === 'email' && $record->key === 'pmta_servers') {
+                                return collect($value)->pluck('name')->filter()->implode(', ');
+                            }
+                            if ($record->group === 'email' && $record->key === 'domain_routing') {
+                                return collect($value)->map(fn ($r) => ($r['provider'] ?? '') . ' → ' . ($r['server'] ?? ''))->implode(', ');
+                            }
+                            return json_encode($value);
+                        }
+                        return is_string($value) ? $value : (string) $value;
+                    }),
 
                 TextColumn::make('updated_at')
                     ->label(__('Updated At'))

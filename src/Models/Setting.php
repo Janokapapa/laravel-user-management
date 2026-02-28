@@ -19,6 +19,15 @@ class Setting extends Model
             if ($setting->group === 'audience' && $setting->key === 'custom_fields') {
                 Cache::forget('audience_custom_field_defs');
             }
+            if ($setting->group === 'email' && $setting->key === 'senders') {
+                Cache::forget('email_sender_definitions');
+            }
+            if ($setting->group === 'email' && $setting->key === 'pmta_servers') {
+                Cache::forget('email_pmta_servers_cache');
+            }
+            if ($setting->group === 'email' && $setting->key === 'domain_routing') {
+                Cache::forget('email_domain_routing_cache');
+            }
         });
     }
 
@@ -46,6 +55,19 @@ class Setting extends Model
         // Invalidate cache for audience custom field definitions
         if ($group === 'audience' && $key === 'custom_fields') {
             Cache::forget('audience_custom_field_defs');
+        }
+
+        // Invalidate cache for email sender definitions
+        if ($group === 'email' && $key === 'senders') {
+            Cache::forget('email_sender_definitions');
+        }
+
+        // Invalidate cache for PMTA server and domain routing definitions
+        if ($group === 'email' && $key === 'pmta_servers') {
+            Cache::forget('email_pmta_servers_cache');
+        }
+        if ($group === 'email' && $key === 'domain_routing') {
+            Cache::forget('email_domain_routing_cache');
         }
 
         return $setting;
