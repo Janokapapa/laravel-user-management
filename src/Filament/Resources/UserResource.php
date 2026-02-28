@@ -87,23 +87,52 @@ class UserResource extends Resource
                     TextInput::make('name')
                         ->label(__('Name'))
                         ->required()
-                        ->maxLength(255),
+                        ->maxLength(255)
+                        ->autocomplete('new-password')
+                        ->id('user_display_name')
+                        ->extraInputAttributes([
+                            'data-1p-ignore' => 'true',
+                            'data-lpignore' => 'true',
+                            'data-form-type' => 'other',
+                            'data-keeper-ignore' => 'true',
+                            'autocomplete' => 'new-password',
+                        ]),
 
                     TextInput::make('email')
                         ->label(__('Email'))
                         ->email()
                         ->required()
                         ->maxLength(255)
-                        ->unique(ignoreRecord: true),
+                        ->unique(ignoreRecord: true)
+                        ->autocomplete('new-password')
+                        ->id('user_contact_addr')
+                        ->extraInputAttributes([
+                            'data-1p-ignore' => 'true',
+                            'data-lpignore' => 'true',
+                            'data-form-type' => 'other',
+                            'data-keeper-ignore' => 'true',
+                            'autocomplete' => 'new-password',
+                        ]),
 
-                    TextInput::make('password')
+                    TextInput::make('pwd_hash')
                         ->label(__('Password'))
-                        ->password()
                         ->maxLength(255)
+                        ->afterStateHydrated(fn ($component) => $component->state(null))
                         ->dehydrateStateUsing(fn($state) => !empty($state) ? bcrypt($state) : null)
                         ->required(fn($livewire) => $livewire instanceof CreateRecord)
                         ->dehydrated(fn($state) => filled($state))
-                        ->autocomplete('new-password'),
+                        ->autocomplete('one-time-code')
+                        ->id('user_pin_code')
+                        ->extraInputAttributes([
+                            'data-1p-ignore' => 'true',
+                            'data-lpignore' => 'true',
+                            'data-form-type' => 'other',
+                            'data-keeper-ignore' => 'true',
+                            'autocorrect' => 'off',
+                            'autocapitalize' => 'off',
+                            'spellcheck' => 'false',
+                            'style' => '-webkit-text-security: disc; text-security: disc;',
+                        ]),
 
                     DateTimePicker::make('email_verified_at')
                         ->label(__('Email verified at'))
