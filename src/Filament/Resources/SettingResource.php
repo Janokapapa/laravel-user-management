@@ -57,7 +57,6 @@ class SettingResource extends Resource
             || ($group === 'email' && $key === 'smtp_servers')
             || ($group === 'email' && $key === 'domain_routing')
             || ($group === 'email' && $key === 'routing_profiles')
-            || ($group === 'email' && $key === 'send_config')
             || ($group === 'parkfly' && $key === 'config');
     }
 
@@ -478,52 +477,6 @@ class SettingResource extends Resource
                     ->itemLabel(fn (array $state): ?string => $state['name'] ?? __('New Profile'))
                     ->defaultItems(0),
 
-                // Section UI for email.send_config
-                Section::make(__('Send Settings'))
-                    ->visible(fn (Get $get): bool => $get('group') === 'email' && $get('key') === 'send_config')
-                    ->schema([
-                        TextInput::make('send_max_per_run')
-                            ->label(__('Max emails per run'))
-                            ->numeric()
-                            ->required()
-                            ->minValue(1)
-                            ->maxValue(10000)
-                            ->afterStateHydrated(fn ($component, $record) => $component->state($record?->value['max_per_run'] ?? 100))
-                            ->dehydrateStateUsing(fn ($state) => $state)
-                            ->helperText(__('How many emails to process per scheduled run (runs every 5 min)')),
-
-                        TextInput::make('send_delay_seconds')
-                            ->label(__('SMTP delay (seconds)'))
-                            ->numeric()
-                            ->required()
-                            ->minValue(0)
-                            ->maxValue(60)
-                            ->afterStateHydrated(fn ($component, $record) => $component->state($record?->value['delay_seconds'] ?? 1))
-                            ->dehydrateStateUsing(fn ($state) => $state)
-                            ->helperText(__('Delay between individual SMTP sends')),
-
-                        TextInput::make('send_mailgun_batch_size')
-                            ->label(__('Mailgun batch size'))
-                            ->numeric()
-                            ->required()
-                            ->minValue(1)
-                            ->maxValue(1000)
-                            ->afterStateHydrated(fn ($component, $record) => $component->state($record?->value['mailgun_batch_size'] ?? 500))
-                            ->dehydrateStateUsing(fn ($state) => $state)
-                            ->helperText(__('Recipients per Mailgun API call (max 1000)')),
-
-                        TextInput::make('send_mailgun_batch_delay_ms')
-                            ->label(__('Mailgun batch delay (ms)'))
-                            ->numeric()
-                            ->required()
-                            ->minValue(0)
-                            ->maxValue(60000)
-                            ->afterStateHydrated(fn ($component, $record) => $component->state($record?->value['mailgun_batch_delay_ms'] ?? 2000))
-                            ->dehydrateStateUsing(fn ($state) => $state)
-                            ->helperText(__('Delay between batches in milliseconds')),
-                    ])
-                    ->columns(2),
-
                 // Section UI for parkfly.config (single JSON object — typed fields, not a repeater)
                 // Uses afterStateHydrated to extract fields from JSON, dehydrateStateUsing to write back
                 Section::make(__('Parkfly Settings'))
@@ -660,12 +613,6 @@ class SettingResource extends Resource
                             }
                             if ($record->group === 'email' && $record->key === 'routing_profiles') {
                                 return collect($value)->pluck('name')->filter()->implode(', ');
-                            }
-                            if ($record->group === 'email' && $record->key === 'send_config') {
-                                return 'max/run: ' . ($value['max_per_run'] ?? '?')
-                                    . ', delay: ' . ($value['delay_seconds'] ?? '?') . 's'
-                                    . ', batch: ' . ($value['mailgun_batch_size'] ?? '?')
-                                    . ', batch_delay: ' . ($value['mailgun_batch_delay_ms'] ?? '?') . 'ms';
                             }
                             if ($record->group === 'parkfly' && $record->key === 'config') {
                                 return 'maxhely: ' . ($value['maxhely'] ?? '?')
