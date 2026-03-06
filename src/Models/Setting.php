@@ -28,6 +28,9 @@ class Setting extends Model
             if ($setting->group === 'email' && $setting->key === 'domain_routing') {
                 Cache::forget('email_domain_routing_cache');
             }
+            if ($setting->group === 'email' && $setting->key === 'smtp_servers') {
+                Cache::forget('email_smtp_servers_cache');
+            }
         });
     }
 
@@ -68,6 +71,9 @@ class Setting extends Model
         }
         if ($group === 'email' && $key === 'domain_routing') {
             Cache::forget('email_domain_routing_cache');
+        }
+        if ($group === 'email' && $key === 'smtp_servers') {
+            Cache::forget('email_smtp_servers_cache');
         }
 
         return $setting;
