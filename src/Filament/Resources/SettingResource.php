@@ -174,6 +174,10 @@ class SettingResource extends Resource
                             ->email()
                             ->maxLength(255),
 
+                        Toggle::make('enabled')
+                            ->label(__('Enabled'))
+                            ->default(true),
+
                         Toggle::make('is_default')
                             ->label(__('Default Sender'))
                             ->default(false),
@@ -246,7 +250,7 @@ class SettingResource extends Resource
                     ->maxItems(20)
                     ->reorderable()
                     ->collapsible()
-                    ->itemLabel(fn (array $state): ?string => ($state['name'] ?? __('New Sender')) . ' (' . ($state['type'] ?? '') . ')')
+                    ->itemLabel(fn (array $state): ?string => (empty($state['enabled'] ?? true) ? '[DISABLED] ' : '') . ($state['name'] ?? __('New Sender')) . ' (' . ($state['type'] ?? '') . ')')
                     ->defaultItems(0)
                     ->rules([
                         function () {
