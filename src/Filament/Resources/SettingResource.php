@@ -56,6 +56,7 @@ class SettingResource extends Resource
             || ($group === 'email' && $key === 'pmta_servers')
             || ($group === 'email' && $key === 'smtp_servers')
             || ($group === 'email' && $key === 'domain_routing')
+            || ($group === 'email' && $key === 'routing_profiles')
             || ($group === 'parkfly' && $key === 'config');
     }
 
@@ -214,6 +215,12 @@ class SettingResource extends Resource
                             ->maxLength(100)
                             ->visible(fn (Get $get): bool => $get('type') === 'pmta')
                             ->helperText(__('Overrides server\'s Virtual MTA if set')),
+
+                        Select::make('routing_profile')
+                            ->label(__('Routing Profile'))
+                            ->options(fn () => \JanDev\EmailSystem\Support\SenderResolver::routingProfileOptions())
+                            ->visible(fn (Get $get): bool => $get('type') === 'pmta')
+                            ->helperText(__('Domain routing profile. If empty, all mail goes to PMTA Server above.')),
 
                         // Mailgun-specific fields
                         TextInput::make('mailgun_domain')
@@ -423,6 +430,53 @@ class SettingResource extends Resource
                     ->itemLabel(fn (array $state): ?string => ($state['provider'] ?? '') . ' → ' . ($state['server'] ?? ''))
                     ->defaultItems(0),
 
+                // Repeater UI for email.routing_profiles
+                Repeater::make('value')
+                    ->label(__('Routing Profiles'))
+                    ->visible(fn (Get $get): bool => $get('group') === 'email' && $get('key') === 'routing_profiles')
+                    ->dehydrated(fn (Get $get): bool => $get('group') === 'email' && $get('key') === 'routing_profiles')
+                    ->schema([
+                        TextInput::make('name')
+                            ->label(__('Profile Name (unique ID)'))
+                            ->required()
+                            ->maxLength(100)
+                            ->rules(['regex:/^[a-zA-Z0-9_-]+$/'])
+                            ->helperText(__('e.g. casino-routing, pmta4-routing')),
+
+                        Repeater::make('rules')
+                            ->label(__('Routing Rules'))
+                            ->schema([
+                                Select::make('provider')
+                                    ->label(__('Email Provider'))
+                                    ->options([
+                                        'microsoft' => __('Microsoft (hotmail, outlook, live)'),
+                                        'yahoo'     => __('Yahoo (yahoo, ymail, aol)'),
+                                        'gmail'     => __('Gmail (gmail, googlemail)'),
+                                        'icloud'    => __('iCloud (icloud, me, mac)'),
+                                        'default'   => __('Default (everything else)'),
+                                    ])
+                                    ->required(),
+
+                                Select::make('server')
+                                    ->label(__('PMTA Server'))
+                                    ->options(fn () => collect(\JanDev\EmailSystem\Support\SenderResolver::pmtaServers())
+                                        ->mapWithKeys(fn ($s) => [$s['name'] => $s['name'] . ' (' . ($s['host'] ?? '') . ')'])
+                                        ->toArray())
+                                    ->required(),
+                            ])
+                            ->columns(2)
+                            ->maxItems(10)
+                            ->reorderable(false)
+                            ->defaultItems(0)
+                            ->itemLabel(fn (array $state): ?string => ($state['provider'] ?? '') . ' → ' . ($state['server'] ?? '')),
+                    ])
+                    ->columns(1)
+                    ->maxItems(20)
+                    ->reorderable()
+                    ->collapsible()
+                    ->itemLabel(fn (array $state): ?string => $state['name'] ?? __('New Profile'))
+                    ->defaultItems(0),
+
                 // Section UI for parkfly.config (single JSON object — typed fields, not a repeater)
                 // Uses afterStateHydrated to extract fields from JSON, dehydrateStateUsing to write back
                 Section::make(__('Parkfly Settings'))
@@ -556,6 +610,9 @@ class SettingResource extends Resource
                             }
                             if ($record->group === 'email' && $record->key === 'domain_routing') {
                                 return collect($value)->map(fn ($r) => ($r['provider'] ?? '') . ' → ' . ($r['server'] ?? ''))->implode(', ');
+                            }
+                            if ($record->group === 'email' && $record->key === 'routing_profiles') {
+                                return collect($value)->pluck('name')->filter()->implode(', ');
                             }
                             if ($record->group === 'parkfly' && $record->key === 'config') {
                                 return 'maxhely: ' . ($value['maxhely'] ?? '?')
