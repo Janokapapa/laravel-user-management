@@ -422,49 +422,61 @@ class SettingResource extends Resource
                     ->defaultItems(0),
 
                 // Section UI for parkfly.config (single JSON object — typed fields, not a repeater)
+                // Uses afterStateHydrated to extract fields from JSON, dehydrateStateUsing to write back
                 Section::make(__('Parkfly Settings'))
                     ->visible(fn (Get $get): bool => $get('group') === 'parkfly' && $get('key') === 'config')
                     ->dehydrated(fn (Get $get): bool => $get('group') === 'parkfly' && $get('key') === 'config')
                     ->schema([
-                        TextInput::make('value.maxhely')
+                        TextInput::make('parkfly_maxhely')
                             ->label(__('Max Parking Spaces (maxhely)'))
                             ->numeric()
                             ->required()
                             ->minValue(0)
+                            ->afterStateHydrated(fn ($component, $record) => $component->state($record?->value['maxhely'] ?? null))
+                            ->dehydrateStateUsing(fn ($state) => $state)
                             ->helperText(__('Total number of available parking spots')),
 
-                        TextInput::make('value.folia_ar')
+                        TextInput::make('parkfly_folia_ar')
                             ->label(__('Foil Wrap Price (folia_ar)'))
                             ->numeric()
                             ->required()
                             ->suffix('HUF')
-                            ->minValue(0),
+                            ->minValue(0)
+                            ->afterStateHydrated(fn ($component, $record) => $component->state($record?->value['folia_ar'] ?? null))
+                            ->dehydrateStateUsing(fn ($state) => $state),
 
-                        TextInput::make('value.kulso_mosas')
+                        TextInput::make('parkfly_kulso_mosas')
                             ->label(__('Exterior Wash Price (kulso_mosas)'))
                             ->numeric()
                             ->required()
                             ->suffix('HUF')
-                            ->minValue(0),
+                            ->minValue(0)
+                            ->afterStateHydrated(fn ($component, $record) => $component->state($record?->value['kulso_mosas'] ?? null))
+                            ->dehydrateStateUsing(fn ($state) => $state),
 
-                        TextInput::make('value.belso_mosas')
+                        TextInput::make('parkfly_belso_mosas')
                             ->label(__('Interior Wash Price (belso_mosas)'))
                             ->numeric()
                             ->required()
                             ->suffix('HUF')
-                            ->minValue(0),
+                            ->minValue(0)
+                            ->afterStateHydrated(fn ($component, $record) => $component->state($record?->value['belso_mosas'] ?? null))
+                            ->dehydrateStateUsing(fn ($state) => $state),
 
-                        Toggle::make('value.van_mosas')
+                        Toggle::make('parkfly_van_mosas')
                             ->label(__('Car Wash Available (van_mosas)'))
+                            ->afterStateHydrated(fn ($component, $record) => $component->state((bool) ($record?->value['van_mosas'] ?? false)))
                             ->dehydrateStateUsing(fn ($state) => (int) $state)
                             ->helperText(__('Enable/disable car wash service')),
 
-                        TextInput::make('value.minimum_voucher')
+                        TextInput::make('parkfly_minimum_voucher')
                             ->label(__('Minimum Voucher Amount (minimum_voucher)'))
                             ->numeric()
                             ->required()
                             ->suffix('HUF')
-                            ->minValue(0),
+                            ->minValue(0)
+                            ->afterStateHydrated(fn ($component, $record) => $component->state($record?->value['minimum_voucher'] ?? null))
+                            ->dehydrateStateUsing(fn ($state) => $state),
                     ])
                     ->columns(2),
 
