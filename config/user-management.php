@@ -107,5 +107,7 @@ return [
         'providers' => ['google'],
         'auto_register' => true, // Auto-create user if not exists
         'default_role' => 'guest', // Role to assign to new users
+        'after_login' => null, // Class FQCN with handle($user, $provider, $socialUser, $isNew) method
+        'redirect_to' => null, // null = intended URL or filament panel URL
     ],
 ];
