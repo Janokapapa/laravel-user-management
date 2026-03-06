@@ -6,6 +6,7 @@ use JanDev\UserManagement\Filament\Resources\Settings\Pages;
 use JanDev\UserManagement\Models\Setting;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
@@ -46,14 +47,16 @@ class SettingResource extends Resource
     }
 
     /**
-     * Check if a record's group+key is handled by a Repeater (not the generic Textarea).
+     * Check if a record's group+key is handled by a custom UI (not the generic Textarea).
      */
     protected static function isRepeaterRecord(string $group, string $key): bool
     {
         return ($group === 'audience' && $key === 'custom_fields')
             || ($group === 'email' && $key === 'senders')
             || ($group === 'email' && $key === 'pmta_servers')
-            || ($group === 'email' && $key === 'domain_routing');
+            || ($group === 'email' && $key === 'smtp_servers')
+            || ($group === 'email' && $key === 'domain_routing')
+            || ($group === 'parkfly' && $key === 'config');
     }
 
     public static function form(Schema $schema): Schema
@@ -176,12 +179,22 @@ class SettingResource extends Resource
                             ->default(false),
 
                         // SMTP-specific fields
+                        Select::make('smtp_server')
+                            ->label(__('SMTP Server'))
+                            ->options(fn () => method_exists(\JanDev\EmailSystem\Support\SenderResolver::class, 'smtpServers')
+                                ? collect(\JanDev\EmailSystem\Support\SenderResolver::smtpServers())
+                                    ->mapWithKeys(fn ($s) => [$s['name'] => $s['name'] . ' (' . ($s['host'] ?? '') . ')'])
+                                    ->toArray()
+                                : [])
+                            ->visible(fn (Get $get): bool => $get('type') === 'smtp')
+                            ->helperText(__('Server defined in SMTP Servers setting')),
+
                         TextInput::make('smtp_mailer')
-                            ->label(__('SMTP Mailer (config/mail.php mailer name)'))
+                            ->label(__('SMTP Mailer (config/mail.php mailer name, fallback)'))
                             ->default('smtp')
                             ->maxLength(100)
                             ->visible(fn (Get $get): bool => $get('type') === 'smtp')
-                            ->helperText(__('Mailer name from config/mail.php')),
+                            ->helperText(__('Fallback: mailer name from config/mail.php (used if no SMTP Server selected)')),
 
                         // PMTA-specific fields
                         Select::make('pmta_server')
@@ -316,6 +329,66 @@ class SettingResource extends Resource
                     ->itemLabel(fn (array $state): ?string => ($state['name'] ?? __('New Server')) . ' (' . ($state['host'] ?? '') . ')')
                     ->defaultItems(0),
 
+                // Repeater UI for email.smtp_servers
+                Repeater::make('value')
+                    ->label(__('SMTP Servers'))
+                    ->visible(fn (Get $get): bool => $get('group') === 'email' && $get('key') === 'smtp_servers')
+                    ->dehydrated(fn (Get $get): bool => $get('group') === 'email' && $get('key') === 'smtp_servers')
+                    ->schema([
+                        TextInput::make('name')
+                            ->label(__('Server Name (unique ID)'))
+                            ->required()
+                            ->maxLength(100)
+                            ->helperText(__('e.g. newsletter-smtp, transactional-smtp')),
+
+                        TextInput::make('host')
+                            ->label(__('Host'))
+                            ->required()
+                            ->maxLength(255)
+                            ->helperText(__('SMTP server hostname')),
+
+                        TextInput::make('port')
+                            ->label(__('Port'))
+                            ->numeric()
+                            ->default(587)
+                            ->required(),
+
+                        Select::make('encryption')
+                            ->label(__('Encryption'))
+                            ->options([
+                                'tls'  => __('TLS (STARTTLS, port 587)'),
+                                'ssl'  => __('SSL (port 465)'),
+                                'none' => __('None (not recommended)'),
+                            ])
+                            ->default('tls')
+                            ->required(),
+
+                        TextInput::make('username')
+                            ->label(__('Username'))
+                            ->maxLength(255),
+
+                        TextInput::make('password')
+                            ->label(__('Password'))
+                            ->password()
+                            ->revealable()
+                            ->maxLength(500),
+
+                        TextInput::make('from_address')
+                            ->label(__('Default From Address'))
+                            ->email()
+                            ->maxLength(255),
+
+                        TextInput::make('from_name')
+                            ->label(__('Default From Name'))
+                            ->maxLength(255),
+                    ])
+                    ->columns(2)
+                    ->maxItems(20)
+                    ->reorderable()
+                    ->collapsible()
+                    ->itemLabel(fn (array $state): ?string => ($state['name'] ?? __('New SMTP Server')) . ' (' . ($state['host'] ?? '') . ':' . ($state['port'] ?? '') . ')')
+                    ->defaultItems(0),
+
                 // Repeater UI for email.domain_routing
                 Repeater::make('value')
                     ->label(__('Domain Routing Rules'))
@@ -348,6 +421,51 @@ class SettingResource extends Resource
                     ->itemLabel(fn (array $state): ?string => ($state['provider'] ?? '') . ' → ' . ($state['server'] ?? ''))
                     ->defaultItems(0),
 
+                // Section UI for parkfly.config (single JSON object — typed fields, not a repeater)
+                Section::make(__('Parkfly Settings'))
+                    ->visible(fn (Get $get): bool => $get('group') === 'parkfly' && $get('key') === 'config')
+                    ->schema([
+                        TextInput::make('value.maxhely')
+                            ->label(__('Max Parking Spaces (maxhely)'))
+                            ->numeric()
+                            ->required()
+                            ->minValue(0)
+                            ->helperText(__('Total number of available parking spots')),
+
+                        TextInput::make('value.folia_ar')
+                            ->label(__('Foil Wrap Price (folia_ar)'))
+                            ->numeric()
+                            ->required()
+                            ->suffix('HUF')
+                            ->minValue(0),
+
+                        TextInput::make('value.kulso_mosas')
+                            ->label(__('Exterior Wash Price (kulso_mosas)'))
+                            ->numeric()
+                            ->required()
+                            ->suffix('HUF')
+                            ->minValue(0),
+
+                        TextInput::make('value.belso_mosas')
+                            ->label(__('Interior Wash Price (belso_mosas)'))
+                            ->numeric()
+                            ->required()
+                            ->suffix('HUF')
+                            ->minValue(0),
+
+                        Toggle::make('value.van_mosas')
+                            ->label(__('Car Wash Available (van_mosas)'))
+                            ->helperText(__('Enable/disable car wash service')),
+
+                        TextInput::make('value.minimum_voucher')
+                            ->label(__('Minimum Voucher Amount (minimum_voucher)'))
+                            ->numeric()
+                            ->required()
+                            ->suffix('HUF')
+                            ->minValue(0),
+                    ])
+                    ->columns(2),
+
                 // JSON textarea for all other settings
                 Textarea::make('value')
                     ->label(__('Value (JSON)'))
@@ -374,7 +492,7 @@ class SettingResource extends Resource
                     ])
                     ->dehydrateStateUsing(fn ($state) => $state)
                     ->afterStateHydrated(function ($component, $state) {
-                        // Skip conversion if a Repeater handles this record
+                        // Skip conversion if a Repeater/Section handles this record
                         $record = $component->getRecord();
                         if ($record instanceof \JanDev\UserManagement\Models\Setting
                             && static::isRepeaterRecord($record->group, $record->key)) {
@@ -417,8 +535,16 @@ class SettingResource extends Resource
                             if ($record->group === 'email' && $record->key === 'pmta_servers') {
                                 return collect($value)->pluck('name')->filter()->implode(', ');
                             }
+                            if ($record->group === 'email' && $record->key === 'smtp_servers') {
+                                return collect($value)->map(fn ($s) => ($s['name'] ?? '') . ' (' . ($s['host'] ?? '') . ':' . ($s['port'] ?? '') . ')')->implode(', ');
+                            }
                             if ($record->group === 'email' && $record->key === 'domain_routing') {
                                 return collect($value)->map(fn ($r) => ($r['provider'] ?? '') . ' → ' . ($r['server'] ?? ''))->implode(', ');
+                            }
+                            if ($record->group === 'parkfly' && $record->key === 'config') {
+                                return 'maxhely: ' . ($value['maxhely'] ?? '?')
+                                    . ', folia: ' . ($value['folia_ar'] ?? '?') . ' HUF'
+                                    . ', mosás: ' . (($value['van_mosas'] ?? false) ? 'igen' : 'nem');
                             }
                             return json_encode($value);
                         }
