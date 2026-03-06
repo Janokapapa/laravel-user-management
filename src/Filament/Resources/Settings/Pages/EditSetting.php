@@ -19,6 +19,23 @@ class EditSetting extends EditRecord
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
+        // email.send_config: assemble value from individual send_* fields
+        if (($data['group'] ?? '') === 'email' && ($data['key'] ?? '') === 'send_config') {
+            $data['value'] = [
+                'max_per_run'            => (int) ($data['send_max_per_run'] ?? 100),
+                'delay_seconds'          => (int) ($data['send_delay_seconds'] ?? 1),
+                'mailgun_batch_size'     => (int) ($data['send_mailgun_batch_size'] ?? 500),
+                'mailgun_batch_delay_ms' => (int) ($data['send_mailgun_batch_delay_ms'] ?? 2000),
+            ];
+            unset(
+                $data['send_max_per_run'],
+                $data['send_delay_seconds'],
+                $data['send_mailgun_batch_size'],
+                $data['send_mailgun_batch_delay_ms'],
+            );
+            return $data;
+        }
+
         // parkfly.config: assemble value from individual parkfly_* fields
         if (($data['group'] ?? '') === 'parkfly' && ($data['key'] ?? '') === 'config') {
             $data['value'] = [
