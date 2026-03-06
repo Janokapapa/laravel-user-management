@@ -193,7 +193,7 @@ class SettingResource extends Resource
                             ->label(__('SMTP Mailer (config/mail.php mailer name, fallback)'))
                             ->default('smtp')
                             ->maxLength(100)
-                            ->visible(fn (Get $get): bool => $get('type') === 'smtp')
+                            ->visible(fn (Get $get): bool => $get('type') === 'smtp' && empty(\JanDev\EmailSystem\Support\SenderResolver::smtpServers()))
                             ->helperText(__('Fallback: mailer name from config/mail.php (used if no SMTP Server selected)')),
 
                         // PMTA-specific fields
@@ -424,6 +424,7 @@ class SettingResource extends Resource
                 // Section UI for parkfly.config (single JSON object — typed fields, not a repeater)
                 Section::make(__('Parkfly Settings'))
                     ->visible(fn (Get $get): bool => $get('group') === 'parkfly' && $get('key') === 'config')
+                    ->dehydrated(fn (Get $get): bool => $get('group') === 'parkfly' && $get('key') === 'config')
                     ->schema([
                         TextInput::make('value.maxhely')
                             ->label(__('Max Parking Spaces (maxhely)'))
@@ -455,6 +456,7 @@ class SettingResource extends Resource
 
                         Toggle::make('value.van_mosas')
                             ->label(__('Car Wash Available (van_mosas)'))
+                            ->dehydrateStateUsing(fn ($state) => (int) $state)
                             ->helperText(__('Enable/disable car wash service')),
 
                         TextInput::make('value.minimum_voucher')
