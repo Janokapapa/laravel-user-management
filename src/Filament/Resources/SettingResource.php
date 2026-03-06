@@ -369,8 +369,6 @@ class SettingResource extends Resource
 
                         TextInput::make('password')
                             ->label(__('Password'))
-                            ->password()
-                            ->revealable()
                             ->maxLength(500),
 
                         TextInput::make('from_address')
