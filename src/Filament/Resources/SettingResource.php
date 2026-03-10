@@ -109,9 +109,11 @@ class SettingResource extends Resource
                             ->required()
                             ->live(),
 
-                        TagsInput::make('options')
+                        \Filament\Forms\Components\KeyValue::make('options')
                             ->label(__('Options'))
-                            ->helperText(__('Press Enter after each option'))
+                            ->keyLabel(__('Value'))
+                            ->valueLabel(__('Label'))
+                            ->helperText(__('Key = stored value, Value = display label'))
                             ->visible(fn (Get $get): bool => $get('type') === 'select'),
 
                         Toggle::make('required')
