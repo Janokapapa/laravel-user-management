@@ -57,6 +57,7 @@ class SettingResource extends Resource
             || ($group === 'email' && $key === 'smtp_servers')
             || ($group === 'email' && $key === 'domain_routing')
             || ($group === 'email' && $key === 'routing_profiles')
+            || ($group === 'email' && $key === 'pmta_failover')
             || ($group === 'system' && $key === 'email_send_config')
             || ($group === 'parkfly' && $key === 'config');
     }
@@ -480,6 +481,35 @@ class SettingResource extends Resource
                     ->itemLabel(fn (array $state): ?string => $state['name'] ?? __('New Profile'))
                     ->defaultItems(0),
 
+                // Repeater UI for email.pmta_failover
+                Repeater::make('value')
+                    ->label(__('PMTA Server Failover Map'))
+                    ->visible(fn (Get $get): bool => $get('group') === 'email' && $get('key') === 'pmta_failover')
+                    ->dehydrated(fn (Get $get): bool => $get('group') === 'email' && $get('key') === 'pmta_failover')
+                    ->schema([
+                        Select::make('server')
+                            ->label(__('Server'))
+                            ->options(fn () => collect(\JanDev\EmailSystem\Support\SenderResolver::pmtaServers())
+                                ->mapWithKeys(fn ($s) => [$s['name'] => $s['name'] . ' (' . ($s['host'] ?? '') . ')'])
+                                ->toArray())
+                            ->required()
+                            ->helperText(__('Server that may fail')),
+
+                        Select::make('fallback')
+                            ->label(__('Fallback Server'))
+                            ->options(fn () => collect(\JanDev\EmailSystem\Support\SenderResolver::pmtaServers())
+                                ->mapWithKeys(fn ($s) => [$s['name'] => $s['name'] . ' (' . ($s['host'] ?? '') . ')'])
+                                ->toArray())
+                            ->required()
+                            ->helperText(__('Server to use when primary fails')),
+                    ])
+                    ->columns(2)
+                    ->maxItems(10)
+                    ->reorderable(false)
+                    ->collapsible()
+                    ->itemLabel(fn (array $state): ?string => ($state['server'] ?? '') . ' → ' . ($state['fallback'] ?? ''))
+                    ->defaultItems(0),
+
                 // Section UI for system.email_send_config
                 Section::make(__('Email Send Settings'))
                     ->visible(fn (Get $get): bool => $get('group') === 'system' && $get('key') === 'email_send_config')
@@ -662,6 +692,9 @@ class SettingResource extends Resource
                             }
                             if ($record->group === 'email' && $record->key === 'routing_profiles') {
                                 return collect($value)->pluck('name')->filter()->implode(', ');
+                            }
+                            if ($record->group === 'email' && $record->key === 'pmta_failover') {
+                                return collect($value)->map(fn ($r) => ($r['server'] ?? '') . ' → ' . ($r['fallback'] ?? ''))->implode(', ');
                             }
                             if ($record->group === 'system' && $record->key === 'email_send_config') {
                                 return 'max/run: ' . ($value['max_per_run'] ?? '?')
