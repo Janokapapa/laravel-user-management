@@ -3,6 +3,7 @@
 namespace JanDev\UserManagement\Http\Controllers;
 
 use Illuminate\Auth\Events\Registered;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Auth;
@@ -43,15 +44,23 @@ class SocialiteController extends Controller
                     ->with('error', 'No account found with this email.');
             }
 
-            $user = $userModel::create([
-                'name' => $socialUser->getName() ?? $socialUser->getNickname(),
-                'email' => $socialUser->getEmail(),
-                'password' => bcrypt(Str::random(24)),
-                'email_verified_at' => now(),
-            ]);
+            try {
+                $user = $userModel::create([
+                    'name' => $socialUser->getName() ?? $socialUser->getNickname(),
+                    'email' => $socialUser->getEmail(),
+                    'password' => bcrypt(Str::random(24)),
+                    'email_verified_at' => now(),
+                ]);
 
-            $isNew = true;
+                $isNew = true;
+            } catch (UniqueConstraintViolationException $e) {
+                // A parallel callback (double click, browser retry) created the
+                // account between our lookup and this insert. Use that row.
+                $user = $userModel::where('email', $socialUser->getEmail())->firstOrFail();
+            }
+        }
 
+        if ($isNew) {
             // Assign default role if configured
             $defaultRole = config('user-management.social_login.default_role');
             if ($defaultRole && method_exists($user, 'assignRole')) {
