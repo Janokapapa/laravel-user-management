@@ -641,10 +641,16 @@ class SettingResource extends Resource
                     ])
                     ->dehydrateStateUsing(fn ($state) => $state)
                     ->afterStateHydrated(function ($component, $state) {
-                        // Skip conversion if a Repeater/Section handles this record
+                        // Only convert for an existing record. On create there is no
+                        // record yet, and the Repeaters share the `value` state path:
+                        // turning their empty array into the string '[]' makes
+                        // Repeater::areCachedDefaultChildSchemasFresh() throw a TypeError.
                         $record = $component->getRecord();
-                        if ($record instanceof \JanDev\UserManagement\Models\Setting
-                            && static::isRepeaterRecord($record->group, $record->key)) {
+                        if (! $record instanceof \JanDev\UserManagement\Models\Setting) {
+                            return;
+                        }
+                        // Skip conversion if a Repeater/Section handles this record
+                        if (static::isRepeaterRecord($record->group, $record->key)) {
                             return;
                         }
                         if (is_array($state) || is_object($state)) {
